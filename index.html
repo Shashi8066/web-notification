@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Push Notifications</title>
+</head>
+<body>
+    <h1>Subscribe to Notifications</h1>
+    <button id="subscribe-btn">Enable Notifications</button>
+
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-messaging.js";
+
+        // 🔹 Replace with your Firebase Config
+        const firebaseConfig = {
+    apiKey: "AIzaSyBmPvahKtWw5YguXo8zXLGjUp2khqcna0c",
+    authDomain: "web-notifications-b413b.firebaseapp.com",
+    projectId: "web-notifications-b413b",
+    storageBucket: "web-notifications-b413b.firebasestorage.app",
+    messagingSenderId: "894487595254",
+    appId: "1:894487595254:web:ee064c21e8fd5fba8144d7",
+    measurementId: "G-Z5ED2LTGT8"
+  };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+
+        // 🔹 Request Notification Permission
+        async function requestPermission() {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                console.log("Notification permission granted.");
+                getToken(messaging, { vapidKey: "BL3ZE2zIgg0PMD68piWbLaeellX3tmb_ggH9pWTbUYJP26s9OoVyaT9AwqUtH3N3rXvr_WMT0rKBmi4drSbpftI" })
+                    .then((currentToken) => {
+                        if (currentToken) {
+                            console.log("FCM Token:", currentToken);
+                            sendTokenToServer(currentToken); // Send to backend
+                        } else {
+                            console.log("No FCM token available. Request permission again.");
+                        }
+                    })
+                    .catch((err) => {
+                        console.log("Error getting FCM token:", err);
+                    });
+            } else {
+                console.log("Notification permission denied.");
+            }
+        }
+
+        // 🔹 Send Token to Backend
+        function sendTokenToServer(token) {
+            fetch("http://localhost:3000/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token })
+            })
+            .then(response => response.json())
+            .then(data => console.log("Token saved:", data))
+            .catch(error => console.error("Error saving token:", error));
+        }
+
+        // 🔹 Handle Incoming Messages
+        onMessage(messaging, (payload) => {
+            console.log("Message received:", payload);
+            new Notification(payload.notification.title, {
+                body: payload.notification.body
+            });
+        });
+
+        // 🔹 Button Click Event to Subscribe
+        document.getElementById("subscribe-btn").addEventListener("click", requestPermission);
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then((registration) => {
+              console.log("Service Worker registered successfully:", registration);
+            })
+            .catch((error) => {
+              console.error("Service Worker registration failed:", error);
+            });
+        } else {
+          console.log("Service workers are not supported in this browser.");
+        }
+      </script>
+</body>
+</html>
