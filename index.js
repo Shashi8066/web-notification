@@ -18,7 +18,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Firebase Admin SDK
-const serviceAccount = require("./firebase-messaging-sw.json");
+const serviceAccount = require("/web-notification/firebase-messaging-sw.json");
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://web-notifications-b413b.firebaseio.com",
