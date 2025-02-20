@@ -1,34 +1,21 @@
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./firebase-messaging-sw.js')
-    .then((registration) => {
-        console.log('Service Worker registered with scope:', registration.scope);
-    }).catch((error) => {
-        console.error('Service Worker registration failed:', error);
-    });
-} else {
-    console.warn('Service Worker is not supported in this browser.');
-}
 const express = require("express");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const admin = require("firebase-admin");
-
-// Ensure the environment variable is correctly set
-const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-
-// Firebase Admin SDK
+// Initialize Firebase Admin SDK
 const serviceAccount = require("./firebase-messaging-sw.json");
+
+if (!serviceAccount) {
+    console.error("❌ Firebase service account JSON file is missing.");
+    process.exit(1);
+}
+
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://web-notifications-b413b.firebaseio.com",
@@ -36,19 +23,22 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// Subscribe user tokens
+// 🔹 Subscribe user tokens
 app.post("/subscribe", async (req, res) => {
     const { token } = req.body;
     if (!token) return res.status(400).json({ error: "Token is required" });
+
     try {
-        await db.collection("subscribers").doc(token).set({ token });
+        // Store the token in Firestore
+        await db.collection("subscribers").doc(token).set({ token, createdAt: new Date() });
         res.json({ success: true, message: "Token saved" });
     } catch (error) {
+        console.error("Error saving token:", error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Send notifications
+// 🔹 Send Notifications
 app.post("/sendNotification", async (req, res) => {
     const { title, message } = req.body;
     if (!title || !message) return res.status(400).json({ error: "Title and message are required" });
@@ -61,15 +51,26 @@ app.post("/sendNotification", async (req, res) => {
 
         const payload = {
             notification: { title, body: message },
+            webpush: {
+                headers: {
+                    Urgency: "high"
+                },
+                notification: {
+                    icon: "/favicon.ico",
+                    actions: [{ action: "open", title: "View" }]
+                }
+            }
         };
 
         await admin.messaging().sendToDevice(tokens, payload);
         res.json({ success: true, message: "Notification sent" });
     } catch (error) {
+        console.error("Error sending notification:", error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Start server
+// 🔹 Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
