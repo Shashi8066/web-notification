@@ -17,6 +17,16 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+const admin = require("firebase-admin");
+
+// Ensure the environment variable is correctly set
+const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+
 // Firebase Admin SDK
 const serviceAccount = require("./firebase-messaging-sw.json");
 admin.initializeApp({
